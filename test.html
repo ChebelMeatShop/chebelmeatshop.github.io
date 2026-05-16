@@ -1,0 +1,36 @@
+function clearAll() {
+  if (!confirm('Clear all Chebel data, service workers and cache?')) return;
+
+  Promise.resolve()
+    .then(function() {
+      localStorage.clear();
+      sessionStorage.clear();
+    })
+    .then(function() {
+      if ('serviceWorker' in navigator) {
+        return navigator.serviceWorker.getRegistrations()
+          .then(function(rs) {
+            return Promise.all(rs.map(function(r) {
+              return r.unregister();
+            }));
+          });
+      }
+    })
+    .then(function() {
+      if (window.caches) {
+        return caches.keys()
+          .then(function(ks) {
+            return Promise.all(ks.map(function(k) {
+              return caches.delete(k);
+            }));
+          });
+      }
+    })
+    .then(function() {
+      alert('All cleared. Loading fresh app now.');
+      location.href = './index.html?fresh=' + Date.now();
+    })
+    .catch(function(e) {
+      alert('Error clearing: ' + e.message);
+    });
+}
