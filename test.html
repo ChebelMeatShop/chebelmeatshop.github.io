@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chebel Test</title>
+<style>
+body { font-family: monospace; padding: 20px; font-size: 14px; line-height: 1.6; }
+.ok { color: green; font-weight: bold; }
+.fail { color: red; font-weight: bold; }
+.box { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 6px; }
+button { background: #1b3a2d; color: white; padding: 12px 20px; border: none; border-radius: 6px; font-size: 14px; margin: 5px; }
+</style>
+</head>
+<body>
+<h2>Chebel Diagnostic</h2>
+<div id="log"></div>
+
+<div class="box">
+<button onclick="clearAll()">Clear ALL data + cache</button>
+<button onclick="goApp()">Go to main app</button>
+</div>
+
+<script>
+var log = document.getElementById('log');
+function add(msg, ok) {
+  var d = document.createElement('div');
+  d.className = ok === false ? 'fail' : (ok === true ? 'ok' : '');
+  d.textContent = msg;
+  log.appendChild(d);
+}
+
+// Tests
+add('Page loaded at ' + new Date().toLocaleTimeString(), true);
+add('User agent: ' + navigator.userAgent.substring(0, 80));
+add('JS executing: YES', true);
+
+try {
+  localStorage.setItem('test', '1');
+  localStorage.removeItem('test');
+  add('localStorage works: YES', true);
+} catch(e) { add('localStorage FAIL: ' + e.message, false); }
+
+try {
+  var d = new Date();
+  add('Date works: ' + d.toISOString(), true);
+} catch(e) { add('Date FAIL: ' + e.message, false); }
+
+try {
+  var b = new Blob(['test'], {type:'text/plain'});
+  var u = URL.createObjectURL(b);
+  add('Blob/URL works', true);
+} catch(e) { add('Blob FAIL: ' + e.message, false); }
+
+// Check existing chebel data
+try {
+  var keys = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && k.indexOf('chebel') === 0) {
+      var v = localStorage.getItem(k);
+      keys.push(k + ' (' + (v ? v.length : 0) + ' bytes)');
+    }
+  }
+  if (keys.length > 0) {
+    add('Existing Chebel data found:', true);
+    keys.forEach(function(k) { add('  - ' + k); });
+  } else {
+    add('No existing Chebel data');
+  }
+} catch(e) { add('Data check FAIL: ' + e.message, false); }
+
+// Service worker check
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(rs) {
+    if (rs.length > 0) {
+      add('Found ' + rs.length + ' service workers (will need clearing)', false);
+    } else {
+      add('No service workers', true);
+    }
+  });
+}
+
+// Caches check
+if (window.caches) {
+  caches.keys().then(function(ks) {
+    if (ks.length > 0) {
+      add('Found ' + ks.length + ' caches: ' + ks.join(','), false);
+    } else {
+      add('No caches', true);
+    }
+  });
+}
+
+function clearAll() {
+  if (!confirm('Clear all Chebel data and reload?')) return;
+  try {
+    localStorage.clear();
+    sessionStorage.clear();
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistrations().then(function(rs) {
+        rs.forEach(function(r) { r.unregister(); });
+      });
+    }
+    if (window.caches) {
+      caches.keys().then(function(ks) {
+        ks.forEach(function(k) { caches.delete(k); });
+      });
+    }
+    setTimeout(function() {
+      alert('Cleared. Now go back and refresh main app.');
+    }, 500);
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function goApp() {
+  location.href = './index.html?t=' + Date.now();
+}
+</script>
+
+</body>
+</html>
